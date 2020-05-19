@@ -2342,6 +2342,7 @@ const struct eth_dev_ops mlx5_os_dev_ops = {
 	.fw_version_get = mlx5_fw_version_get,
 	.dev_infos_get = mlx5_dev_infos_get,
 	.read_clock = mlx5_txpp_read_clock,
+	.convert_ts_to_ns = mlx5_convert_ts_to_ns,
 	.dev_supported_ptypes_get = mlx5_dev_supported_ptypes_get,
 	.vlan_filter_set = mlx5_vlan_filter_set,
 	.rx_queue_setup = mlx5_rx_queue_setup,

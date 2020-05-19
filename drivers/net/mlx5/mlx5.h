@@ -819,6 +819,7 @@ unsigned int mlx5_ifindex(const struct rte_eth_dev *dev);
 int mlx5_get_mac(struct rte_eth_dev *dev, uint8_t (*mac)[RTE_ETHER_ADDR_LEN]);
 int mlx5_get_mtu(struct rte_eth_dev *dev, uint16_t *mtu);
 int mlx5_set_mtu(struct rte_eth_dev *dev, uint16_t mtu);
+int mlx5_convert_ts_to_ns(struct rte_eth_dev *dev, uint64_t *timestamp);
 int mlx5_read_clock(struct rte_eth_dev *dev, uint64_t *clock);
 int mlx5_link_update(struct rte_eth_dev *dev, int wait_to_complete);
 int mlx5_dev_get_flow_ctrl(struct rte_eth_dev *dev,
