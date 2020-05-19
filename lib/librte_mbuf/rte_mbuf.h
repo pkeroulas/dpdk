@@ -1122,6 +1122,7 @@ __rte_pktmbuf_copy_hdr(struct rte_mbuf *mdst, const struct rte_mbuf *msrc)
 	mdst->hash = msrc->hash;
 	mdst->packet_type = msrc->packet_type;
 	mdst->timestamp = msrc->timestamp;
+	mdst->udata64 = msrc->udata64;
 	rte_mbuf_dynfield_copy(mdst, msrc);
 }
 

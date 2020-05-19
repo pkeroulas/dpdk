@@ -4103,6 +4103,10 @@ int rte_eth_timesync_read_time(uint16_t port_id, struct timespec *time);
  */
 int rte_eth_timesync_write_time(uint16_t port_id, const struct timespec *time);
 
+__rte_experimental
+int
+rte_eth_convert_ts_to_ns(uint16_t port_id, uint64_t *ticks, uint64_t *clock);
+
 /**
  * @warning
  * @b EXPERIMENTAL: this API may change without prior notice.
@@ -4149,7 +4153,7 @@ int rte_eth_timesync_write_time(uint16_t port_id, const struct timespec *time);
  */
 __rte_experimental
 int
-rte_eth_read_clock(uint16_t port_id, uint64_t *clock);
+rte_eth_read_clock(uint16_t port_id, uint64_t *ticks);
 
 /**
  * Config l2 tunnel ether type of an Ethernet device for filtering specific
