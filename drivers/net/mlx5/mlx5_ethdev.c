@@ -690,6 +690,24 @@ mlx5_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 	return 0;
 }
 
+int
+mlx5_convert_ts_to_ns(struct rte_eth_dev *dev, uint64_t *ticks, uint64_t *clock)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct ibv_context *ctx = priv->sh->ctx;
+	struct mlx5dv_clock_info clock_info;
+
+	int err = mlx5_glue->get_clock_info(ctx, &clock_info);
+	if (err != 0) {
+		DRV_LOG(WARNING, "Could not get the clock info!");
+		return err;
+	}
+
+	*clock = mlx5_glue->convert_ts_to_ns(&clock_info, *ticks);
+
+	return err;
+}
+
 /**
  * Get device current raw clock counter
  *
