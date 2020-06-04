@@ -47,8 +47,9 @@
 
 static char errbuf[PCAP_ERRBUF_SIZE];
 static struct timeval start_time;
-static uint64_t start_cycles;
-static uint64_t hz;
+static uint64_t sys_start_cycles;
+static uint64_t sys_hz;
+static uint64_t hw_start_cycles;
 static uint8_t iface_idx;
 
 struct queue_stat {
@@ -287,15 +288,34 @@ eth_null_rx(void *queue __rte_unused,
 	return 0;
 }
 
+#define NSEC_PER_SEC	1000000000L
+
 static inline void
-calculate_timestamp(struct timeval *ts) {
-	uint64_t cycles;
+calculate_timestamp(const struct rte_mbuf *mbuf, struct timeval *ts) {
+	uint64_t cycles = rte_get_timer_cycles() - sys_start_cycles;
+	uint64_t hz = sys_hz;
 	struct timeval cur_time;
 
-	cycles = rte_get_timer_cycles() - start_cycles;
+	if (mbuf->ol_flags & PKT_RX_TIMESTAMP) {
+		if (! hw_start_cycles) {
+			hw_start_cycles = mbuf->timestamp;
+			// use sw ts for 1st pkt
+		}
+		else {
+			cycles = mbuf->timestamp - hw_start_cycles;
+			hz = 78125000; // this is device_frequency_khz which can't be accessed from here and is constant anyway
+		}
+	}
+
 	cur_time.tv_sec = cycles / hz;
-	cur_time.tv_usec = (cycles % hz) * 1e6 / hz;
-	timeradd(&start_time, &cur_time, ts);
+	cur_time.tv_usec = (cycles % hz) * NSEC_PER_SEC / hz;
+	ts->tv_sec = start_time.tv_sec + cur_time.tv_sec;
+	ts->tv_usec = start_time.tv_usec + cur_time.tv_usec;
+	if (ts->tv_usec > NSEC_PER_SEC) {
+		ts->tv_usec -= NSEC_PER_SEC;
+		ts->tv_sec += 1;
+	}
+	//printf("hw_ts=%ld.%ld mbuf->ts: %ld, cycles=%ld\n", ts->tv_sec, ts->tv_usec, mbuf->timestamp, cycles);
 }
 
 /*
@@ -331,7 +351,7 @@ eth_pcap_tx_dumper(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 			caplen = sizeof(temp_data);
 		}
 
-		calculate_timestamp(&header.ts);
+		calculate_timestamp(mbuf, &header.ts);
 		header.len = len;
 		header.caplen = caplen;
 		/* rte_pktmbuf_read() returns a pointer to the data directly
@@ -475,7 +495,7 @@ open_single_tx_pcap(const char *pcap_filename, pcap_dumper_t **dumper)
 	 * with pcap_dump_open(). We create big enough an Ethernet
 	 * pcap holder.
 	 */
-	tx_pcap = pcap_open_dead(DLT_EN10MB, RTE_ETH_PCAP_SNAPSHOT_LEN);
+	tx_pcap = pcap_open_dead_with_tstamp_precision(DLT_EN10MB, RTE_ETH_PCAP_SNAPSHOT_LEN, PCAP_TSTAMP_PRECISION_NANO);
 	if (tx_pcap == NULL) {
 		PMD_LOG(ERR, "Couldn't create dead pcap");
 		return -1;
@@ -1338,8 +1358,8 @@ pmd_pcap_probe(struct rte_vdev_device *dev)
 	PMD_LOG(INFO, "Initializing pmd_pcap for %s", name);
 
 	gettimeofday(&start_time, NULL);
-	start_cycles = rte_get_timer_cycles();
-	hz = rte_get_timer_hz();
+	sys_start_cycles = rte_get_timer_cycles();
+	sys_hz = rte_get_timer_hz();
 
 	if (rte_eal_process_type() == RTE_PROC_SECONDARY) {
 		eth_dev = rte_eth_dev_attach_secondary(name);
