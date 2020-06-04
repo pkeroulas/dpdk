@@ -2757,9 +2757,11 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	} else if (config.cqe_pad) {
 		DRV_LOG(INFO, "Rx CQE padding is enabled");
 	}
+
 	if (config.devx) {
 		priv->counter_fallback = 0;
 		err = mlx5_devx_cmd_query_hca_attr(sh->ctx, &config.hca_attr);
+		printf("Osc. freq=%d Hz\n", config.hca_attr.device_frequency_khz);
 		if (err) {
 			err = -err;
 			goto error;
