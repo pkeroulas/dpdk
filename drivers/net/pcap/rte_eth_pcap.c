@@ -45,6 +45,8 @@
 
 #define RTE_PMD_PCAP_MAX_QUEUES 16
 
+#define NSEC_PER_SEC	1000000000L
+
 static char errbuf[PCAP_ERRBUF_SIZE];
 static struct timeval start_time;
 static uint64_t start_cycles;
@@ -287,22 +289,23 @@ eth_null_rx(void *queue __rte_unused,
 	return 0;
 }
 
-#define NSEC_PER_SEC	1000000000L
-
 static inline void
-calculate_timestamp(struct timeval *ts) {
-	uint64_t cycles;
-	struct timeval cur_time;
-
-	cycles = rte_get_timer_cycles() - start_cycles;
-	cur_time.tv_sec = cycles / hz;
-	cur_time.tv_usec = (cycles % hz) * NSEC_PER_SEC / hz;
-
-	ts->tv_sec = start_time.tv_sec + cur_time.tv_sec;
-	ts->tv_usec = start_time.tv_usec + cur_time.tv_usec;
-	if (ts->tv_usec >= NSEC_PER_SEC) {
-		ts->tv_usec -= NSEC_PER_SEC;
-		ts->tv_sec += 1;
+calculate_timestamp(const struct rte_mbuf *mbuf, struct timeval *ts) {
+	if (mbuf->ol_flags & PKT_RX_TIMESTAMP) {
+		/* timestamp unit is nanoseconds but must fit in timeval */
+		ts->tv_sec = mbuf->timestamp / NSEC_PER_SEC;
+		ts->tv_usec = mbuf->timestamp % NSEC_PER_SEC;
+	} else {
+		uint64_t cycles = rte_get_timer_cycles() - start_cycles;
+		struct timeval cur_time;
+		cur_time.tv_sec = cycles / hz;
+		cur_time.tv_usec = (cycles % hz) * NSEC_PER_SEC / hz;
+		ts->tv_sec = start_time.tv_sec + cur_time.tv_sec;
+		ts->tv_usec = start_time.tv_usec + cur_time.tv_usec;
+		if (ts->tv_usec > NSEC_PER_SEC) {
+			ts->tv_usec -= NSEC_PER_SEC;
+			ts->tv_sec += 1;
+		}
 	}
 }
 
@@ -339,7 +342,7 @@ eth_pcap_tx_dumper(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 			caplen = sizeof(temp_data);
 		}
 
-		calculate_timestamp(&header.ts);
+		calculate_timestamp(mbuf, &header.ts);
 		header.len = len;
 		header.caplen = caplen;
 		/* rte_pktmbuf_read() returns a pointer to the data directly
