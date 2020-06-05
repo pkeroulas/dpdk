@@ -4409,6 +4409,12 @@ rte_eth_rx_burst(uint16_t port_id, uint16_t queue_id,
 	nb_rx = (*dev->rx_pkt_burst)(dev->data->rx_queues[queue_id],
 				     rx_pkts, nb_pkts);
 
+	for (int i=0; i < nb_rx; i++) {
+		uint64_t clock;
+		rte_eth_convert_ts_to_ns(port_id, &rx_pkts[i]->timestamp, &clock);
+		rx_pkts[i]->timestamp = clock;
+	}
+
 #ifdef RTE_ETHDEV_RXTX_CALLBACKS
 	if (unlikely(dev->post_rx_burst_cbs[queue_id] != NULL)) {
 		struct rte_eth_rxtx_callback *cb =
