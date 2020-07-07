@@ -121,13 +121,14 @@ mlx5_os_get_dev_attr(void *ctx, struct mlx5_dev_attr *device_attr)
 	device_attr->max_tso = attr_ex.tso_caps.max_tso;
 	device_attr->tso_supported_qpts = attr_ex.tso_caps.supported_qpts;
 
-	struct mlx5dv_context dv_attr = { .comp_mask = 0 };
+	struct mlx5dv_context dv_attr = { .comp_mask = MLX5DV_CONTEXT_MASK_CLOCK_INFO_UPDATE };
 	err = mlx5_glue->dv_query_device(ctx, &dv_attr);
 	if (err)
 		return err;
 
 	device_attr->flags = dv_attr.flags;
 	device_attr->comp_mask = dv_attr.comp_mask;
+	device_attr->max_clock_info_update_nsec = dv_attr.max_clock_info_update_nsec;
 #ifdef HAVE_IBV_MLX5_MOD_SWP
 	device_attr->sw_parsing_offloads =
 		dv_attr.sw_parsing_caps.sw_parsing_offloads;

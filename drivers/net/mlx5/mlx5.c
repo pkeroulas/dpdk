@@ -869,6 +869,7 @@ mlx5_alloc_shared_dev_ctx(const struct mlx5_dev_spawn_data *spawn,
 	int err = 0;
 	uint32_t i;
 	struct mlx5_devx_tis_attr tis_attr = { 0 };
+	uint64_t ticks;
 
 	MLX5_ASSERT(spawn);
 	/* Secondary process should not create the shared context. */
@@ -988,6 +989,20 @@ mlx5_alloc_shared_dev_ctx(const struct mlx5_dev_spawn_data *spawn,
 	mlx5_flow_aging_init(sh);
 	mlx5_flow_counters_mng_init(sh);
 	mlx5_flow_ipool_create(sh, config);
+
+	/*
+	 * Setup timer to periodically query clock info.
+	 * FIXME:
+	 * lcore_id is 0 but Rx path is handled by lcore 1
+	 */
+	rte_timer_subsystem_init();
+	rte_timer_init(&sh->clock_info_query_timer);
+
+	ticks = sh->device_attr.max_clock_info_update_nsec
+				* rte_get_timer_hz() / 1000000000UL;
+	rte_timer_reset(&sh->clock_info_query_timer, ticks, PERIODICAL, 1,
+				mlx5_clock_info_query_timer_callback, sh);
+
 	/* Add device to memory callback list. */
 	rte_rwlock_write_lock(&mlx5_shared_data->mem_event_rwlock);
 	LIST_INSERT_HEAD(&mlx5_shared_data->mem_event_cb_list,

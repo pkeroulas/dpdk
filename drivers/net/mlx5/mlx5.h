@@ -21,6 +21,7 @@
 #include <rte_interrupts.h>
 #include <rte_errno.h>
 #include <rte_flow.h>
+#include <rte_timer.h>
 
 #include <mlx5_glue.h>
 #include <mlx5_devx_cmds.h>
@@ -75,6 +76,7 @@ struct mlx5_dev_attr {
 	uint32_t	tso_supported_qpts;
 	uint64_t	flags;
 	uint64_t	comp_mask;
+	uint64_t	max_clock_info_update_nsec;
 	uint32_t	sw_parsing_offloads;
 	uint32_t	min_single_stride_log_num_of_bytes;
 	uint32_t	max_single_stride_log_num_of_bytes;
@@ -660,6 +662,9 @@ struct mlx5_dev_ctx_shared {
 	struct mlx5_flex_parser_profiles fp[MLX5_FLEX_PARSER_MAX];
 	/* Flex parser profiles information. */
 	struct mlx5dv_devx_uar *devx_rx_uar; /* DevX UAR for Rx. */
+	struct rte_timer clock_info_query_timer;
+	/* Timer to query clock info asynchronously */
+	struct mlx5dv_clock_info clock_info; /* device clock info */
 	struct mlx5_dev_shared_port port[]; /* per device port data array. */
 };
 
@@ -819,6 +824,8 @@ unsigned int mlx5_ifindex(const struct rte_eth_dev *dev);
 int mlx5_get_mac(struct rte_eth_dev *dev, uint8_t (*mac)[RTE_ETHER_ADDR_LEN]);
 int mlx5_get_mtu(struct rte_eth_dev *dev, uint16_t *mtu);
 int mlx5_set_mtu(struct rte_eth_dev *dev, uint16_t mtu);
+void mlx5_clock_info_query_timer_callback(__rte_unused struct rte_timer *timer,
+			void *arg);
 int mlx5_convert_ts_to_ns(struct rte_eth_dev *dev, uint64_t *timestamp);
 int mlx5_read_clock(struct rte_eth_dev *dev, uint64_t *clock);
 int mlx5_link_update(struct rte_eth_dev *dev, int wait_to_complete);
