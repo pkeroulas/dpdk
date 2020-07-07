@@ -356,6 +356,29 @@ mlx5_set_flags(struct rte_eth_dev *dev, unsigned int keep, unsigned int flags)
 }
 
 /**
+ * Update clock info from device periodically, every
+ * max_clock_info_update_nsec.
+ *
+ * @param timer
+ *   Pointer to timer initialized in the device context.
+ * @param arg
+ *   Pointer todevice context that holds the clock info.
+ */
+void
+mlx5_clock_info_query_timer_callback(__rte_unused struct rte_timer *timer,
+			  void *arg)
+{
+	struct mlx5_dev_ctx_shared *sh = arg;
+	struct mlx5dv_clock_info *clock_info = &sh->clock_info;
+	struct ibv_context *ctx = sh->ctx;
+
+	int err = mlx5_glue->get_clock_info(ctx, clock_info);
+	if (err != 0) {
+		DRV_LOG(WARNING, "Could not get the clock info!");
+	}
+}
+
+/**
  * Convert raw clock counter to nanoseconds
  *
  * @param dev
@@ -371,18 +394,13 @@ int
 mlx5_convert_ts_to_ns(struct rte_eth_dev *dev, uint64_t *timestamp)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct ibv_context *ctx = priv->sh->ctx;
-	struct mlx5dv_clock_info clock_info;
+	struct mlx5dv_clock_info *clock_info = &priv->sh->clock_info;
 
-	int err = mlx5_glue->get_clock_info(ctx, &clock_info);
-	if (err != 0) {
-		DRV_LOG(WARNING, "Could not get the clock info!");
-		return err;
-	}
+	rte_timer_manage();
 
-	*timestamp = mlx5_glue->convert_ts_to_ns(&clock_info, *timestamp);
+	*timestamp = mlx5_glue->convert_ts_to_ns(clock_info, *timestamp);
 
-	return err;
+	return 0;
 }
 
 /**
